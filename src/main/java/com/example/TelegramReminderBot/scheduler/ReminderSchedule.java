@@ -11,6 +11,7 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -35,37 +36,42 @@ public class ReminderSchedule {
                 .text(text)
                 .build();
     }
+    public void scheduleReminder(Long chatId,String data) {
+        SendMessage sendMessage=createSendMessage(chatId,"user: "+userServis.FindBiId(chatId).getName() );
+        List<Reminder> reminders = userServis.FindBiId(chatId).getReminders();
+        if (reminders != null && !reminders.isEmpty()) {
+            String remindersString = "";
+            for (Reminder reminder : reminders) {
+                if (reminder.getData().equals(data)) remindersString=reminder.getValue();
+            }
+            sendMessage=createSendMessage(chatId, remindersString);
+        }
+        else{
+            System.out.println("No Reminders for "+ chatId);
+        }
+        try {
+            bot.execute(sendMessage);
+        } catch (TelegramApiException e) {
+            System.out.println("Error sending message: " + e.getMessage());
+        }
+    }
 
     // Метод планирования выполнения задачи в заданное время
-    public void scheduleNotification(Long chatId) {
+    public void scheduleNotification(Long chatId,String data) {
+        int hour= Integer.parseInt(data.split("\\.",2)[0]);
+        int minute= Integer.parseInt(data.split("\\.",2)[1]);
         Runnable task = () -> {
-            SendMessage sendMessage=createSendMessage(chatId,"user: "+userServis.FindBiId(chatId).getName() );
-            List<Reminder> reminders = userServis.FindBiId(chatId).getReminders();
-            if (reminders != null && !reminders.isEmpty()) {
-                StringBuilder remindersString = new StringBuilder();
-                for (Reminder reminder : reminders) {
-                    remindersString.append(" * ").append(reminder.getValue());
-                }
-                 sendMessage=createSendMessage(chatId, remindersString.toString());
-            }
-            else{
-                System.out.println("No Reminders for "+ chatId);
-            }
-            try {
-                bot.execute(sendMessage);
-            } catch (TelegramApiException e) {
-                System.out.println("Error sending message: " + e.getMessage());
-            }
+           scheduleReminder(chatId,data);
         };
 
         LocalDateTime now = LocalDateTime.now();
-        LocalDateTime targetTime = now.withHour(0).withMinute(21).withSecond(0).withNano(0); // Устанавливаем время отправки напоминаний 10:00
+        LocalDateTime targetTime = now.withHour(hour).withMinute(minute).withSecond(0).withNano(0); // Устанавливаем время отправки напоминаний 10:00
         if(now.isAfter(targetTime))
         {
             targetTime = targetTime.plusDays(1);
         }
         ZonedDateTime zonedTargetTime = targetTime.atZone(ZoneId.systemDefault());
-        long initialDelay =  ZonedDateTime.now().until(zonedTargetTime, java.time.temporal.ChronoUnit.MILLIS);
+        long initialDelay =  ZonedDateTime.now().until(zonedTargetTime, ChronoUnit.MILLIS);
 
 
         scheduler.scheduleAtFixedRate(task, initialDelay, 24 * 60 * 60 * 1000, TimeUnit.MILLISECONDS); // Выполнять каждый день в 10:00

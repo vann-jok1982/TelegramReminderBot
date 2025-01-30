@@ -23,6 +23,6 @@ public class User {
     @Column(name = "user_status")
     private String status;
 
-    @OneToMany(mappedBy = "user")
+    @OneToMany(mappedBy = "user",fetch = FetchType.EAGER)
     private List<Reminder> reminders;
 }

@@ -60,7 +60,6 @@ public class BotFasade {
         }
         if(sendMessage == null)
             sendMessage =  defaultCommandHandler.handle(update);
-        reminderSchedule.scheduleNotification(chatId);
         return sendMessage;
     }
 }
